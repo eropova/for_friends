@@ -1,0 +1,33 @@
+import sys
+
+f1, f2 = sys.argv[1:3]
+
+with open(f1, 'r') as file1:
+    file1 = file1.readlines()
+
+with open(f2, 'r') as file2:
+    file2 = file2.readlines()
+
+f1_yes_f2_no = []
+f2_yes_f1_no = []
+
+for _ in file1:
+    if _ not in file2:
+        f1_yes_f2_no.append(_)
+
+with open('f1_yes_f2_no', 'w') as miss1:
+    out_version = ''.join(f1_yes_f2_no)
+    miss1.write(out_version)
+
+print('f1 done')
+
+for _ in file2:
+    if _ not in file1:
+        f2_yes_f1_no.append(_)
+
+
+with open('f2_yes_f1_no', 'w') as miss2:
+    out_version = ''.join(f2_yes_f1_no)
+    miss2.write(out_version)
+
+print('f2 done')
