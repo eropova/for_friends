@@ -1,0 +1,7 @@
+#HELP bc_dpbackup_start Timestamp for start process backup
+#HELP bc_dpbackup_end Timestamp for end process backup
+#HELP bc_dpbackup_complieted if status Success
+#HELP bc_dpbackup_warnings if status Warning
+#HELP bc_dpbackup_errors if status Error
+#HELP bc_dpbackup_size Size backup
+
