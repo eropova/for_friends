@@ -1,0 +1,104 @@
+import pandas as pd
+import datetime as dt
+import os
+import re
+path = '/home/'  # тут папка где лежат файлы, желательно абсолютный путь
+
+month = {
+    "янв": 1,
+    "фев": 2,
+    "мар": 3,
+    "апр": 4,
+    "май": 5,
+    "июн": 6,
+    "июл": 7,
+    "авг": 8,
+    "сен": 9,
+    "окт": 10,
+    "ноя": 11,
+    "дек": 12,
+}
+
+ok_files = [f for f in os.listdir(path) if f.startswith('dp')]
+
+def read_first_type(file):
+    with open(file, 'r') as f:
+        out_dict = {}
+        for _ in f.readlines():
+            if _.__contains__(': '):
+                out_dict[_.split(': ')[0]] = _.split(': ')[1].strip()
+        name = out_dict['Cell Manager'].split('.')[1]
+        source = out_dict['Specification'].replace('_', '-')
+        statuses = {'Completed':1}
+        status = statuses.get(out_dict['Status'], 0)
+        warnings = out_dict['# Warnings']
+        errors = out_dict['# Errors']
+        st_time_day,st_time_time = out_dict['Start Time'].split(' ')
+        st_time_epoch = int(dt.datetime(*[int(x) for x in st_time_day.split('.')][::-1], 
+                                    *[int(x) for x in st_time_time.split(':')]
+                                   ).timestamp())
+        end_time_day, end_time_time = out_dict['Creation Date'].split(' ')
+        end_time_epoch = int(dt.datetime(*[int(x) for x in end_time_day.split('.')][::-1], 
+                                    *[int(x) for x in end_time_time.split(':')]
+                                   ).timestamp())
+        transferred = out_dict['GB Written']
+        transferred_kb = int(float(out_dict['GB Written'].replace(',', '.')))*1048576
+        return name,st_time_epoch, end_time_epoch , status, warnings, errors, transferred_kb, source
+        
+def read_second_type(file):
+    with open(file, 'r') as f:
+        out_dict = {}
+        for _ in f.readlines():
+            if _.__contains__(': '):
+                out_dict[re.sub(r"[\t +]", "", _.split(': ')[0])]=_.split(': ')[1].strip().replace('<br>', '')
+        name = out_dict['Host'].split('.')[1]
+        source = out_dict['BackupSpecification'].replace('_', '-')
+        statuses = {'Completed':1}
+        status = statuses.get(out_dict['Status'], 0)
+        warnings = out_dict['Numberofwarnings']
+        errors = out_dict['Numberoferrors']
+        
+        st_time_day,st_time_time = out_dict['Started'].split(',')
+        st_time_day = st_time_day.replace(' г.', '').split(' ')
+        st_time_day = (int(st_time_day[2]), month.get(st_time_day[1][:3]), int(st_time_day[0]))
+        st_time_epoch = int(dt.datetime(*st_time_day, 
+                                    *[int(x) for x in st_time_time.split(':')]
+                                   ).timestamp())
+        
+        end_time_day, end_time_time = out_dict['Finished'].split(',')
+        end_time_day = end_time_day.replace(' г.', '').split(' ')
+        end_time_day = (int(end_time_day[2]), month.get(end_time_day[1][:3]), int(end_time_day[0]))
+        end_time_epoch = int(dt.datetime(*end_time_day, 
+                                    *[int(x) for x in end_time_time.split(':')]
+                                   ).timestamp())
+        
+        transferred_kb = out_dict['Sessiondatasize[kB]'][:-3]
+        return name,st_time_epoch, end_time_epoch , status, warnings, errors, transferred_kb, source
+        
+for file in ok_files:
+    out_string = ''
+    with open(f"{path}/{file}", 'r') as letter:
+        if letter.read().startswith(chr(45)):
+            print(2)
+            name,st_time_epoch, end_time_epoch , status, warnings, errors, transferred_kb, source   = read_second_type(f"{path}/{file}")
+        else:
+            print(1)
+            name,st_time_epoch, end_time_epoch , status, warnings, errors, transferred_kb, source = read_first_type(f"{path}/{file}")
+
+        out_string += (
+        f'bc_dpbackup_start{{source="{source}", system="dataprotector", period="daily"}} {st_time_epoch} \n'
+        f'bc_dpbackup_end{{source="{source}", system="dataprotector", period="daily"}} {end_time_epoch} \n'
+        f'bc_dpbackup_complieted{{source="{source}", system="dataprotector", period="daily"}} {status} \n'
+        f'bc_dpbackup_warnings{{source="{source}", system="dataprotector", period="daily"}} {warnings} \n'
+        f'bc_dpbackup_errors{{source="{source}", system="dataprotector", period="daily"}} {errors} \n'
+        f'bc_dpbackup_size{{source="{source}", system="dataprotector", period="daily"}} {transferred_kb} \n'
+        '\n')
+        print(out_string)
+        with open(f'~/PycharmProjects/venv/mt/bc_dataprotector_{name}_{source}.prom', 'w+') as file_out: # где храним метрики
+            file_out.write(
+                f'#HELP bc_dpbackup_start Timestamp for start process backup \n'
+                f'#HELP bc_dpbackup_end Timestamp for end process backup \n'
+                f'#HELP bc_dpbackup_complieted if status Success \n'
+                f'#HELP bc_dpbackup_warnings if status Warning \n'
+                f'#HELP bc_dpbackup_errors if status Error' 
+                + out_string)        
