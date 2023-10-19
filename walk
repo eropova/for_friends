@@ -1,6 +1,7 @@
 import subprocess
 import sys
-import netaddr
+#import netaddr
+import ipaddress
 
 cmds = {'telnet': 'telnet',
         'nc': ['nc', '-zvw3']
@@ -15,7 +16,8 @@ with open('test_ip_walker.txt') as f:
     for d in data:
         ips, ports = d.split(' ')
         if ips.__contains__('/'):
-            ips = [str(x) for x in netaddr.IPNetwork(ips)]
+            #ips = [str(x) for x in netaddr.IPNetwork(ips)]
+            ips = [str(x) for x in ipaddress.ip_network(ips)]
         else:
             ips = [ips]
 
