@@ -1,0 +1,32 @@
+import subprocess
+import sys
+import netaddr
+
+cmds = {'telnet': 'telnet',
+        'nc': ['nc', '-zvw3']
+        }
+
+cmd_type = sys.argv[1]
+
+out_file = []
+
+with open('test_ip_walker.txt') as f:
+    data = [x.replace('\n', '') for x in f]
+    for d in data:
+        ips, ports = d.split(' ')
+        if ips.__contains__('/'):
+            ips = [str(x) for x in netaddr.IPNetwork(ips)]
+        else:
+            ips = [ips]
+
+        if ports.__contains__(','):
+            ports = [ports.split(',')]
+        else:
+            ports = [ports]
+
+        for i in ips:
+            for p in ports:
+                ps = subprocess.Popen([cmds.get(cmd_type), i, p],
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.STDOUT,
+                                      shell=True)
