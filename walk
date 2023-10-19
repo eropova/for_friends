@@ -30,3 +30,4 @@ with open('test_ip_walker.txt') as f:
                     ps = subprocess.Popen([*cmds.get(cmd_type), i,p],
                                       stdout=f_o,
                                       stderr=subprocess.STDOUT)
+                    f_o += '\n'
