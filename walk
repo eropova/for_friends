@@ -26,8 +26,7 @@ with open('test_ip_walker.txt') as f:
 
         for i in ips:
             for p in ports:
-                with open('./out_file', 'a+') as f_o:
+                with open('./out_file', 'a+', newline='\n') as f_o:
                     ps = subprocess.Popen([*cmds.get(cmd_type), i,p],
                                       stdout=f_o,
                                       stderr=subprocess.STDOUT)
-                    f_o += '\n'
